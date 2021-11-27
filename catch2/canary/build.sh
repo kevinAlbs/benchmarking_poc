@@ -1,1 +1,1 @@
-cmake --build cmake-build --target canary
+cmake --build cmake-build --target canary.out

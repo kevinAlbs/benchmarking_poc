@@ -1,1 +1,1 @@
-./cmake-build/canary
+./cmake-build/canary.out
