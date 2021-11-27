@@ -1,1 +1,2 @@
-cmake --build cmake-build --target canary.out
+CMAKE=${CMAKE:-cmake}
+$CMAKE --build cmake-build --target canary.out

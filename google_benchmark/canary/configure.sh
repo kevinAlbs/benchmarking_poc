@@ -1,5 +1,10 @@
-cmake \
-    -DCMAKE_PREFIX_PATH=/Users/kevin.albertson/c_benchmarking_poc/google_benchmark/benchmark/build \
+CMAKE=${CMAKE:-cmake}
+if [ ! -d cmake-build ]; then
+     mkdir cmake-build
+fi
+pushd cmake-build
+$CMAKE \
+    -DCMAKE_PREFIX_PATH=../benchmark/build \
     -DCMAKE_CXX_STANDARD=17 \
-    -Bcmake-build \
-    -S.
+    ..
+popd
