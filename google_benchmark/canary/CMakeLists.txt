@@ -1,0 +1,5 @@
+cmake_minimum_required(VERSION 3.2)
+project (canary LANGUAGES CXX)
+add_executable (canary.out canary.cpp)
+find_package (benchmark REQUIRED)
+target_link_libraries (canary benchmark::benchmark)

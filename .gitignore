@@ -1,0 +1,4 @@
+cmake-build
+*.out
+./google_benchmark/benchmark
+.vscode
