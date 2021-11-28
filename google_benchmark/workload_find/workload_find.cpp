@@ -4,7 +4,6 @@
 
 #include <cstdlib>
 #include <cstring>
-#include <sstream>
 
 #define MONGODB_URI_ENV "MONGODB_URI"
 
@@ -13,17 +12,8 @@
 // Only 100 clients can be checked out of a pool concurrently.
 #define MONGOC_DEFAULT_MAX_POOL_SIZE 100
 
-
 class WorkloadFindFixture : public benchmark::Fixture {
 public:
-    void SkipWithError (benchmark::State& state, std::stringstream ss) {
-        state.SkipWithError (ss.str().c_str());
-    }
-
-    void SkipWithError (benchmark::State& state, std::string s) {
-        state.SkipWithError (s.c_str());
-    }
-
     /* BeforeLoop creates pool_, warms up all client connections, and drops db.coll.
      * May be called by any thread in the benchmark. Skips if not the main thread. */
     void BeforeLoop (benchmark::State& state) {
@@ -48,24 +38,25 @@ public:
         {
             clients[i] = mongoc_client_pool_pop(pool_);
             if (!clients[i]) {
-                SkipWithError(state, "unable to pop client in mongoc_client_pool_pop");
-                return;
+                state.SkipWithError("unable to pop client in mongoc_client_pool_pop");
+                return; // TODO: do not leak clients.
             }
         }
 
         // Use one client to drop the db.coll collection.
         coll = mongoc_client_get_collection(clients[0], "db", "coll");
         if (!mongoc_collection_drop(coll, &error) && error.code != MONGODB_ERROR_NOT_FOUND) {
-            SkipWithError(state, std::stringstream() << "error in mongoc_collection_drop: " << error.message);
-            return;
+            state.SkipWithError("error in mongoc_collection_drop"); // TODO: include error.message.
+            return; // TODO: do not leak clients or coll.
         }
+        mongoc_collection_destroy (coll);
 
         for (i = 0; i < MONGOC_DEFAULT_MAX_POOL_SIZE; i++)
         {
             bson_t *cmd = BCON_NEW("ping", BCON_INT32(1));
 
             if (!mongoc_client_command_simple(clients[i], "db", cmd, NULL /* read_prefs */, NULL /* reply */, &error)) {
-                SkipWithError(state, std::stringstream() << "error in mongoc_client_command_simple: " << error.message);
+                state.SkipWithError("error in mongoc_client_command_simple");
             }
             mongoc_client_pool_push(pool_, clients[i]);
             bson_destroy(cmd);
@@ -97,11 +88,11 @@ BENCHMARK_DEFINE_F (WorkloadFindFixture, WorkloadFind) (benchmark::State& state)
         coll = mongoc_client_get_collection(client, "db", "coll");
         cursor = mongoc_collection_find_with_opts(coll, &filter, NULL /* opts */, NULL /* read_prefs */);
         if (mongoc_cursor_next(cursor, &doc)) {
-            SkipWithError(state, "unexpected document returned from mongoc_cursor_next");
+            state.SkipWithError("unexpected document returned from mongoc_cursor_next");
         }
 
         if (mongoc_cursor_error(cursor, &error)) {
-            SkipWithError(state, std::stringstream() << "error in mongoc_cursor_next: " << error.message);
+            state.SkipWithError("error in mongoc_cursor_next"); // TODO: include error.message.
         }
 
         mongoc_cursor_destroy(cursor);
