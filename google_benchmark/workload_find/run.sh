@@ -4,4 +4,4 @@ MONGO_C_DRIVER_PATH=${MONGO_C_DRIVER_PATH:-"/Users/kevin.albertson/code/c-bootst
 echo "Running MONGO_C_VERSION=$MONGO_C_VERSION"
 export DYLD_LIBRARY_PATH="$DYLD_LIBRARY_PATH:$MONGO_C_DRIVER_PATH"
 export LD_LIBRARY_PATH="$DYLD_LIBRARY_PATH:$MONGO_C_DRIVER_PATH"
-./cmake-build/workload_find.out --benchmark_format=console
+./cmake-build/workload_find.out $@
