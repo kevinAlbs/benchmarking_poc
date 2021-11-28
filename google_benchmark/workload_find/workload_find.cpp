@@ -6,7 +6,6 @@
 #include <cstring>
 #include <iostream>
 
-static bool global_init = false;
 
 #define MONGO_ERROR_NOT_FOUND 26
 // libmongoc uses a max client pool size of 100 by default.
@@ -27,12 +26,6 @@ static void BM_WorkloadFind(benchmark::State &state)
     bson_error_t error;
     bson_t *filter = BCON_NEW("_id", BCON_INT32(0));
 
-    if (!global_init)
-    {
-        mongoc_init();
-        std::cout << "mongoc_version " << mongoc_get_version() << std::endl;
-        global_init = true;
-    }
 
     if (state.thread_index() == 0)
     {
@@ -133,4 +126,12 @@ static void BM_WorkloadFind(benchmark::State &state)
 BENCHMARK(BM_WorkloadFind)->Unit(benchmark::TimeUnit::kMicrosecond)->UseRealTime()->ThreadRange(1, 64)->Repetitions(3);
 // ->MinTime(10); - may help with stability.
 
-BENCHMARK_MAIN();
+int main(int argc, char** argv) {                                     
+    mongoc_init ();
+    benchmark::Initialize(&argc, argv);                               
+    if (benchmark::ReportUnrecognizedArguments(argc, argv)) return 1; 
+    benchmark::RunSpecifiedBenchmarks();                              
+    benchmark::Shutdown();                                            
+    mongoc_cleanup ();
+    return 0;                                                           
+}                 
