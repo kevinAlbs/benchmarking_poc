@@ -108,12 +108,43 @@ BENCHMARK_DEFINE_F (WorkloadFindFixture, WorkloadFind) (benchmark::State& state)
     mongoc_read_prefs_destroy (prefs);
 }
 
+BENCHMARK_DEFINE_F (WorkloadFindFixture, WorkloadPing) (benchmark::State& state) {
+    bson_t cmd = BSON_INITIALIZER;
+    bson_error_t error;
+    mongoc_read_prefs_t *prefs;
+
+    BCON_APPEND (&cmd, "ping", BCON_INT32(1));
+    prefs = mongoc_read_prefs_new (MONGOC_READ_NEAREST);
+
+    this->BeforeLoop (state);
+    for (auto _ : state) {
+        mongoc_client_t *client;
+
+        client = mongoc_client_pool_pop(pool_);
+
+        if (!mongoc_client_command_simple (client, "db", &cmd, prefs, NULL /* reply */, &error)) {
+            state.SkipWithError("error in mongoc_client_command_simple"); // TODO: include error.message.
+        }
+
+        mongoc_client_pool_push(pool_, client);
+    }
+    state.counters["ops_per_sec"] = benchmark::Counter(state.iterations(), benchmark::Counter::kIsRate);
+    this->AfterLoop (state);
+    bson_destroy (&cmd);
+    mongoc_read_prefs_destroy (prefs);
+}
+
 BENCHMARK_REGISTER_F (WorkloadFindFixture, WorkloadFind)->
     Unit(benchmark::TimeUnit::kMicrosecond)->
     UseRealTime()->
     ThreadRange(1, 64);
     // ->MinTime(10); - may help with stability.
 
+BENCHMARK_REGISTER_F (WorkloadFindFixture, WorkloadPing)->
+    Unit(benchmark::TimeUnit::kMicrosecond)->
+    UseRealTime()->
+    ThreadRange(1, 64);
+    // ->MinTime(10); - may help with stability.
 
 class WorkloadFindSingleFixture : public benchmark::Fixture {
 public:
@@ -211,6 +242,36 @@ BENCHMARK_DEFINE_F (WorkloadFindSingleFixture, WorkloadFind) (benchmark::State& 
 }
 
 BENCHMARK_REGISTER_F (WorkloadFindSingleFixture, WorkloadFind)->
+    Unit(benchmark::TimeUnit::kMicrosecond)->
+    UseRealTime()->
+    ThreadRange(1, 64);
+    // ->MinTime(10); - may help with stability.
+
+BENCHMARK_DEFINE_F (WorkloadFindSingleFixture, WorkloadPing) (benchmark::State& state) {
+    bson_t cmd = BSON_INITIALIZER;
+    bson_error_t error;
+    mongoc_read_prefs_t *prefs;
+    BCON_APPEND (&cmd, "ping", BCON_INT32(1));
+
+    prefs = mongoc_read_prefs_new (MONGOC_READ_NEAREST);
+
+    this->BeforeLoop (state);
+    for (auto _ : state) {
+        mongoc_client_t *client;
+
+        client = this->clients_[state.thread_index()];
+        if (!mongoc_client_command_simple (client, "db", &cmd, prefs, NULL /* reply */, &error)) {
+            state.SkipWithError("error in mongoc_cursor_next"); // TODO: include error.message.
+        }
+
+    }
+    state.counters["ops_per_sec"] = benchmark::Counter(state.iterations(), benchmark::Counter::kIsRate);
+    this->AfterLoop (state);
+    bson_destroy (&cmd);
+    mongoc_read_prefs_destroy (prefs);
+}
+
+BENCHMARK_REGISTER_F (WorkloadFindSingleFixture, WorkloadPing)->
     Unit(benchmark::TimeUnit::kMicrosecond)->
     UseRealTime()->
     ThreadRange(1, 64);
