@@ -75,7 +75,10 @@ public:
 BENCHMARK_DEFINE_F (WorkloadFindFixture, WorkloadFind) (benchmark::State& state) {
     bson_t filter = BSON_INITIALIZER;
     bson_error_t error;
+    mongoc_read_prefs_t *prefs;
+
     BCON_APPEND (&filter, "_id", BCON_INT32(0));
+    prefs = mongoc_read_prefs_new (MONGOC_READ_NEAREST);
 
     this->BeforeLoop (state);
     for (auto _ : state) {
@@ -86,7 +89,7 @@ BENCHMARK_DEFINE_F (WorkloadFindFixture, WorkloadFind) (benchmark::State& state)
 
         client = mongoc_client_pool_pop(pool_);
         coll = mongoc_client_get_collection(client, "db", "coll");
-        cursor = mongoc_collection_find_with_opts(coll, &filter, NULL /* opts */, NULL /* read_prefs */);
+        cursor = mongoc_collection_find_with_opts(coll, &filter, NULL /* opts */, prefs);
         if (mongoc_cursor_next(cursor, &doc)) {
             state.SkipWithError("unexpected document returned from mongoc_cursor_next");
         }
@@ -102,6 +105,7 @@ BENCHMARK_DEFINE_F (WorkloadFindFixture, WorkloadFind) (benchmark::State& state)
     state.counters["ops_per_sec"] = benchmark::Counter(state.iterations(), benchmark::Counter::kIsRate);
     this->AfterLoop (state);
     bson_destroy (&filter);
+    mongoc_read_prefs_destroy (prefs);
 }
 
 BENCHMARK_REGISTER_F (WorkloadFindFixture, WorkloadFind)->
@@ -174,7 +178,10 @@ public:
 BENCHMARK_DEFINE_F (WorkloadFindSingleFixture, WorkloadFind) (benchmark::State& state) {
     bson_t filter = BSON_INITIALIZER;
     bson_error_t error;
+    mongoc_read_prefs_t *prefs;
     BCON_APPEND (&filter, "_id", BCON_INT32(0));
+
+    prefs = mongoc_read_prefs_new (MONGOC_READ_NEAREST);
 
     this->BeforeLoop (state);
     for (auto _ : state) {
@@ -185,7 +192,7 @@ BENCHMARK_DEFINE_F (WorkloadFindSingleFixture, WorkloadFind) (benchmark::State& 
 
         client = this->clients_[state.thread_index()];
         coll = mongoc_client_get_collection(client, "db", "coll");
-        cursor = mongoc_collection_find_with_opts(coll, &filter, NULL /* opts */, NULL /* read_prefs */);
+        cursor = mongoc_collection_find_with_opts(coll, &filter, NULL /* opts */, prefs);
         if (mongoc_cursor_next(cursor, &doc)) {
             state.SkipWithError("unexpected document returned from mongoc_cursor_next");
         }
@@ -200,6 +207,7 @@ BENCHMARK_DEFINE_F (WorkloadFindSingleFixture, WorkloadFind) (benchmark::State& 
     state.counters["ops_per_sec"] = benchmark::Counter(state.iterations(), benchmark::Counter::kIsRate);
     this->AfterLoop (state);
     bson_destroy (&filter);
+    mongoc_read_prefs_destroy (prefs);
 }
 
 BENCHMARK_REGISTER_F (WorkloadFindSingleFixture, WorkloadFind)->
